@@ -1,0 +1,77 @@
+<link href='http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,700,300italic' rel='stylesheet' type='text/css'>
+
+<style type='text/css'>
+        div.vert_column{
+                border:3px solid silver;
+                border-radius:15px;
+                width:160px;
+                text-align:center;
+        float:left;
+        margin:2%;
+        font-family: 'Open Sans Condensed', sans-serif;
+        padding:10px;
+        }
+    div.content{
+        border:3px solid silver;
+                border-radius:15px;
+                width:95%;
+                text-align:center;
+        margin:0 auto;
+        font-family: 'Open Sans Condensed', sans-serif;
+        padding:10px;
+        overflow:auto;
+    }
+    a{
+        text-decoration:none;
+        color:gray;
+    }
+    div.action_button{
+        width:160px;
+        margin:10px auto;
+        border-radius:5px;
+        background: #0099CB;
+        color:white;
+        overflow:auto;
+        clear:both;
+    }
+    div.action_button:hover{
+        background:#4CAFD0;
+    }
+    ul{
+        list-style-type:none;
+        margin:0;padding:0;
+    }
+    ul li{
+        margin:0;padding:0;
+    }
+</style>
+<div class='content'>
+<h3>Groups</h3>
+    {% for group in groups %}
+        <div class='vert_column'>
+            <ul>
+            {% for person in group %}
+                <li>
+                {{ person.name }}
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+    <br />
+    <a href=''>
+        <div class='action_button'>
+            <b>Use These Groups (Save)</b>
+        </div>
+    </a>
+    <a href=''>
+        <div class='action_button'>
+            <b>Don't Use - Sort Again</b>
+        </div>
+    </a>
+        <a href='{% url home %}'>
+        <div class='action_button'>
+            <b>Back Home</b>
+        </div>
+    </a>
+</div>

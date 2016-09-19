@@ -1,0 +1,523 @@
+<style type='text/css'>
+        div.vert_column{
+                border:3px solid silver;
+                border-radius:15px;
+                width:20%;
+                text-align:center;
+        float:left;
+        margin:2%;
+        font-family: 'Open Sans Condensed', sans-serif;
+        padding:10px;
+        min-width:150px;
+        }
+    a{
+        text-decoration:none;
+        color:gray;
+    }
+
+    .group{
+        border: 2px solid black;
+        border-radius: 10px;
+        overflow: auto;
+        clear: both;
+    }
+
+    .selected{
+        background: gainsboro;
+    }
+
+    .small_action_button{
+        width:40px;
+        margin:0px auto;
+        border-radius:5px;
+        background: #0099CB;
+        color:white;
+        float: right;
+    }
+
+    .action_button{
+        width:120px;
+        position: relative;
+        margin:10px auto;
+        border-radius:5px;
+        background: #0099CB;
+        color:white;
+        clear: both;
+        display: block;
+    }
+    .action_button:hover, .small_action_button:hover{
+        background:#4CAFD0;
+    }
+    span.action_button{
+        padding:0 5px;
+    }
+    ul{
+        list-style-type:none;
+        margin:0;padding:0;
+        display: block;
+    }
+    ul li{
+        margin:4px 0;padding:0;
+        display: block;
+        float:left;
+        width: 100%;
+    }
+</style>
+<div class='vert_column'>
+<h3>Namelists</h3>
+    <ul id='namelists'>
+    {% for namelist in groups %}
+        <li data-namelist-id={{ namelist.id }}>{{ namelist.title }}</li>
+    {% empty %}
+        You have no Namelists
+    {% endfor %}
+    </ul>
+    <input type='text' id='new_namelist_title', name='new_namelist_title' />
+    <div class='action_button' id='new_namelist'>+</div>
+
+</div>
+<div class='vert_column'>
+    <h3>Members</h3>
+    <ul id='names'>
+
+    {% for person in people %}
+        <li data-person-id={{ person.id }}>{{ person.name }}</li>
+    {% empty %}
+        This group has no members
+    {% endfor %}
+
+    </ul>
+    <input type='text' id='new_person_name', name='new_person_name' />
+    <div class='action_button' id='new_person'>+</div>
+    <!--
+        <li>
+            Make <span id="group_num_display">3</span> groups   <input id='group_num' type='hidden' value=3 />
+            <a href='#'><span class='action_button' id="add">+</span></a> | <a href='#'><span class='action_button' id='subtract'>-</span></a>
+        </li>
+    -->
+    <div class='action_button' id='make_groups'>
+        <b>Group 'Em</b>
+    </div>
+</div>
+
+<div class='vert_column' id='saved-groups' style="display:none">
+    <h3>Saved Groups</h3>
+    <ul id='saved-groups-list'>
+    </ul>
+</div>
+
+<div class='vert_column' id='group-info' style='display:none'>
+    <h3>Groups Setup</h3>
+    <h4>Number of Groups: <span id=group-count></span></h4>
+    <div class='small_action_button' id='add-group'>+</div>
+    <div class='small_action_button' id='sub-group'>-</div>
+    <ul id='groups-setup'>
+    </ul>
+    <br />
+    <div class='action_button' id='save-groups' style="display:hidden;"><strong>Save These Groups</strong></div>
+    <div class='action_button' id='create-groups'><strong>Sort!</strong></div>
+</div>
+<!--
+{% if person %}
+<div class='vert_column'>
+    <h3>{{ person.name }}</h3>
+    <ul>
+    {% for pairing in list_pairings %}
+        <li>
+        {% for name in pairing.people.all %}
+            {% ifnotequal name person %}
+                {{ name.name }}
+            {% endifnotequal %}
+        {% endfor %} - {{ pairing.count }} time{{ pairing.count|pluralize }}
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+-->
+
+<script type='text/javascript'>
+    var ajax = {};
+    ajax.x = function () {
+        if (typeof XMLHttpRequest !== 'undefined') {
+            return new XMLHttpRequest();
+        }
+        var versions = [
+            "MSXML2.XmlHttp.6.0",
+            "MSXML2.XmlHttp.5.0",
+            "MSXML2.XmlHttp.4.0",
+            "MSXML2.XmlHttp.3.0",
+            "MSXML2.XmlHttp.2.0",
+            "Microsoft.XmlHttp"
+        ];
+
+        var xhr;
+        for (var i = 0; i < versions.length; i++) {
+            try {
+                xhr = new ActiveXObject(versions[i]);
+                break;
+            } catch (e) {
+            }
+        }
+        return xhr;
+    };
+
+    ajax.send = function (url, callback, method, data, async) {
+        if (async === undefined) {
+            async = true;
+        }
+        var x = ajax.x();
+        x.open(method, url, async);
+        x.onreadystatechange = function () {
+            if (x.readyState == 4) {
+                callback(x.responseText)
+            }
+        };
+        if (method == 'POST') {
+            x.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        }
+        x.send(data)
+    };
+
+    ajax.get = function (url, data, callback, async) {
+        var query = [];
+        for (var key in data) {
+            query.push(encodeURIComponent(key) + '=' + encodeURIComponent(data[key]));
+        }
+        ajax.send(url + (query.length ? '?' + query.join('&') : ''), callback, 'GET', null, async)
+    };
+
+    ajax.post = function (url, data, callback, async) {
+        var query = [];
+        for (var key in data) {
+            query.push(encodeURIComponent(key) + '=' + encodeURIComponent(data[key]));
+        }
+        ajax.send(url, callback, 'POST', query.join('&'), async)
+    };
+
+    /*********************************************************
+    Now the real stuff
+    *********************************************************/
+
+    var addNamelistButton = document.getElementById('new_namelist');
+    var addPersonButton = document.getElementById('new_person');
+    var launchGroupsButton = document.getElementById('make_groups');
+    var addGroupsButton = document.getElementById('add-group');
+    var subGroupsButton = document.getElementById('sub-group');
+    var createGroupsButton = document.getElementById('create-groups');
+
+    addNamelistButton.addEventListener("click", function(){
+        NAMELISTS.ACTIONS.create_new();
+    });
+    addPersonButton.addEventListener("click", function(){
+        MEMBERS.ACTIONS.create_new();
+    });
+    launchGroupsButton.addEventListener("click", function(){
+        GROUPS.ACTIONS.launchSetup();
+    });
+
+    addGroupsButton.addEventListener("click", function(){
+        GROUPS.ACTIONS.addGroup();
+    });
+    subGroupsButton.addEventListener("click", function(){
+        GROUPS.ACTIONS.subGroup();
+    });
+
+    createGroupsButton.addEventListener("click", function() {
+        GROUPS.ACTIONS.createGroups();
+    });
+
+    var NAMELISTS = {
+        ATTRIBUTES: {
+            'selectedNamelist': null
+        },
+        ACTIONS: {
+            set_all: function() {
+                var elements = NAMELISTS.ACTIONS.gather_all();
+                elements.forEach(function(e) {
+                    e.addEventListener("click", NAMELISTS.ACTIONS.select);
+                });
+            },
+            create_new: function() {
+                var data = {
+                    'title': NAMELISTS.ACTIONS.get_namelist_title(),
+                    'csrfmiddlewaretoken':'{{csrf_token}}'
+                };
+                ajax.post('/groupsort/add_namelist/', data, NAMELISTS.ACTIONS.retrieve, true);
+                NAMELISTS.ELEMENTS.new_title.value = '';
+            },
+
+            get_namelist_title: function() {
+                var title = NAMELISTS.ELEMENTS.new_title.value;
+                return title;
+            },
+
+            retrieve: function() {
+                ajax.get('/groupsort/get_namelists/', {}, NAMELISTS.ACTIONS.update_list, true);
+            },
+
+            update_list: function(response) {
+                response = JSON.parse(response)
+                titles = response.titles;
+                var new_list = '';
+                titles.forEach(function(title){
+                    new_list += (NAMELISTS.TEMPLATES.title(title));
+                });
+                NAMELISTS.ELEMENTS.list.innerHTML = new_list;
+                NAMELISTS.ACTIONS.set_all();
+            },
+            select: function(element) {
+                var elements = NAMELISTS.ACTIONS.gather_all();
+                elements.forEach(function(e) {
+                    e.setAttribute("class", "");
+                });
+                element.target.setAttribute("class", "selected");
+                var id = element.target.getAttribute("data-namelist-id");
+                NAMELISTS.ATTRIBUTES.selectedNamelist = id;
+                MEMBERS.ACTIONS.retrieve();
+            },
+            gather_all: function() {
+                var elements = document.querySelectorAll('#namelists li');
+                return elements;
+            }
+        },
+
+        ELEMENTS: {
+            new_title: document.getElementById('new_namelist_title'),
+            list: document.getElementById('namelists')
+        },
+
+        TEMPLATES: {
+            title: function(title) {
+                return '<li data-namelist-id=' + title.id + '>' + title.title + '</li>';
+            }
+        }
+    }
+
+    var MEMBERS = {
+            ATTRIBUTES: {
+                'selectedPerson': null
+            },
+            ACTIONS: {
+                set_all: function() {
+                    var elements = MEMBERS.ACTIONS.gather_all();
+                    elements.forEach(function(e) {
+                        e.addEventListener("click", MEMBERS.ACTIONS.select);
+                    });
+                },
+                retrieve: function() {
+                    var data = {
+                        'namelist': NAMELISTS.ATTRIBUTES.selectedNamelist
+                    };
+                    ajax.get('/groupsort/get_namelist/', data, MEMBERS.ACTIONS.update_list, true);
+                },
+                update_list: function(response) {
+                    response = JSON.parse(response)
+                    names = response.members;
+                    var new_list = '';
+                    names.forEach(function(name){
+                        new_list += (MEMBERS.TEMPLATES.name(name));
+                    });
+                    MEMBERS.ELEMENTS.list.innerHTML = new_list;
+                    MEMBERS.ACTIONS.set_all();
+                },
+                create_new: function() {
+                    var data = {
+                        'name': MEMBERS.ACTIONS.get_person_name(),
+                        'namelist_id': NAMELISTS.ATTRIBUTES.selectedNamelist,
+                        'csrfmiddlewaretoken':'{{csrf_token}}'
+                    };
+                    ajax.post('/groupsort/add_person/', data, MEMBERS.ACTIONS.retrieve, true);
+                    MEMBERS.ELEMENTS.new_name.value = '';
+                },
+                get_person_name: function() {
+                    var name = MEMBERS.ELEMENTS.new_name.value;
+                    return name;
+                },
+                select: function(element) {
+                    var elements = MEMBERS.ACTIONS.gather_all();
+                    elements.forEach(function(e) {
+                        e.setAttribute("class", "");
+                    });
+                    element.target.setAttribute("class", "selected");
+                    var id = element.target.getAttribute("data-person-id");
+                    MEMBERS.ATTRIBUTES.selectedPerson = id;
+                },
+                gather_all: function() {
+                    var elements = document.querySelectorAll('#names li');
+                    return elements;
+                }
+            },
+            ELEMENTS: {
+                list: document.getElementById('names'),
+                new_name: document.getElementById('new_person_name'),
+            },
+            TEMPLATES: {
+                name: function(name) {
+                    var text = '<li data-person-id=' + name.id + '>' + name.name + '</li>';
+                    return text;
+                }
+            }
+    };
+
+    GROUPS = {
+        ATTRIBUTES: {
+            numGroups: 3,
+            groups: []
+        },
+        ACTIONS: {
+            set_all: function() {
+                var elements = GROUPS.ACTIONS.gatherAll();
+                elements.forEach(function(e) {
+                    var id = e.getAttribute('data-group-num');
+                    var nextId = parseInt(id) + 1;
+                    if (nextId > GROUPS.ATTRIBUTES.numGroups) {
+                        nextId = 1;
+                    }
+                    var groupSize = parseInt(e.getAttribute('data-group-size'));
+                    var addButton = e.querySelector("[data-group-add]");
+                    var subButton = e.querySelector("[data-group-sub]");
+                    addButton.addEventListener("click", function() {
+                        GROUPS.ACTIONS.addToGroup(id);
+                        GROUPS.ACTIONS.subFromGroup(nextId);
+                    });
+                    subButton.addEventListener("click", function() {
+                        GROUPS.ACTIONS.subFromGroup(id);
+                        GROUPS.ACTIONS.addToGroup(nextId);
+                    });
+                });
+            },
+            updateGroupCount: function() {
+                GROUPS.ELEMENTS.groupCount.innerHTML = GROUPS.ATTRIBUTES.numGroups;
+            },
+            launchSetup: function() {
+                var column = GROUPS.ELEMENTS.column;
+                column.style.display = "block";
+                GROUPS.ACTIONS.buildGroupTemplates();
+                GROUPS.ACTIONS.updateGroupCount();
+            },
+            hide: function() {
+                var column = GROUPS.ELEMENTS.column;
+                column.style.display = "none";
+            },
+            buildGroupTemplates: function() {
+                var peopleCount = MEMBERS.ELEMENTS.list.children.length;
+                var size = Math.floor( peopleCount / GROUPS.ATTRIBUTES.numGroups );
+                var remainder = peopleCount % GROUPS.ATTRIBUTES.numGroups;
+                var children = '';
+                for (var i=1; i <= GROUPS.ATTRIBUTES.numGroups; i++) {
+                    var group = GROUPS.TEMPLATES.group(i, size);
+                    children += group;
+                }
+                GROUPS.ELEMENTS.setupList.innerHTML = children;
+                // Now deal with the remainder :(
+                if (remainder > 0) {
+                    for (var i=1; i <= remainder; i++) {
+                        GROUPS.ACTIONS.addToGroup(i);
+                    }
+                }
+                GROUPS.ACTIONS.set_all();
+                GROUPS.ACTIONS.updateGroupTemplates();
+            },
+            addGroup: function() {
+                GROUPS.ATTRIBUTES.numGroups++;
+                GROUPS.ACTIONS.buildGroupTemplates();
+                GROUPS.ACTIONS.updateGroupCount();
+            },
+            subGroup: function() {
+                GROUPS.ATTRIBUTES.numGroups--;
+                GROUPS.ACTIONS.buildGroupTemplates();
+                GROUPS.ACTIONS.updateGroupCount();
+            },
+            addToGroup: function(groupNum) {
+                var group = GROUPS.ACTIONS.getGroupById(groupNum);
+                var size = group.getAttribute("data-group-size");
+                size++;
+                group.setAttribute("data-group-size", size);
+                GROUPS.ACTIONS.updateGroupTemplates();
+            },
+            subFromGroup: function(groupNum) {
+                var group = GROUPS.ACTIONS.getGroupById(groupNum);
+                var size = group.getAttribute("data-group-size");
+                size--;
+                group.setAttribute("data-group-size", size);
+                GROUPS.ACTIONS.updateGroupTemplates();
+            },
+            getGroupById: function(id) {
+                var group = document.querySelector('[data-group-num="' + id + '"]');
+                return group;
+            },
+            updateGroupTemplates: function() {
+                var groupCount = GROUPS.ATTRIBUTES.numGroups;
+                for (var i=1; i <=groupCount; i++) {
+                    var group = document.querySelector('[data-group-num="' + i + '"]');
+                    var count = group.getAttribute("data-group-size");
+                    var countElement = group.querySelector('span');
+                    countElement.innerHTML = "A Group of " + count;
+                }
+            },
+            gatherAll: function() {
+                var groups = document.querySelectorAll("[data-group-num]");
+                return groups;
+            },
+            createGroups: function() {
+                var namelist_id = NAMELISTS.ATTRIBUTES.selectedNamelist;
+                var groups = [];
+                var groupItems = GROUPS.ACTIONS.gatherAll();
+
+                groupItems.forEach(function(element) {
+                    groups.push(element.getAttribute("data-group-size"));
+                });
+
+                data = {
+                    'namelist_id': namelist_id,
+                    'groups': groups
+                };
+                ajax.get('/groupsort/create_groups/', data, GROUPS.ACTIONS.displayGroups, true);
+            },
+            displayGroups: function(response) {
+                var data = JSON.parse(response);
+                var groups = data.groups;
+                var newElement = ''
+                groups.forEach(function(group) {
+                    newElement += GROUPS.TEMPLATES.displayGroup(group);
+                });
+                var setupList = GROUPS.ELEMENTS.setupList;
+                setupList.innerHTML = newElement;
+            }
+        },
+        ELEMENTS: {
+            column: document.getElementById('group-info'),
+            setupList: document.getElementById('groups-setup'),
+            groupCount: document.getElementById('group-count')
+        },
+        TEMPLATES: {
+            group: function(id, size) {
+                return "<li data-group-num=" + id + " data-group-size=" + size + "><span class='count'></span>"
+                    + "<div class='small_action_button' data-group-add=" + id + ">+</div>"
+                    + "<div class='small_action_button' data-group-sub=" + id + ">-</div></li>";
+            },
+            displayGroup: function(group) {
+                var text = "<div class='group'><ul>";
+                group.forEach(function(person) {
+                    text += "<li>" + person.name + "</li>";
+                });
+                text += "</ul></div>"
+                return text;
+            }
+        }
+    };
+
+    SAVEDGROUPS = {
+        ACTIONS: {
+
+        },
+        ELEMENTS: {
+            list: document.getElementById('saved-groups-list')
+        }
+    };
+
+    NAMELISTS.ACTIONS.set_all();
+    MEMBERS.ACTIONS.set_all();
+
+</script>
