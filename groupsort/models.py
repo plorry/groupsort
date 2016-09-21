@@ -12,7 +12,7 @@ class NameList(models.Model):
         return person
 
 class Person(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50)
     namelist = models.ForeignKey(NameList, related_name='people')
     forbidden_pairings = models.ManyToManyField("self")
 
