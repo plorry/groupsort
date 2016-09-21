@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.views.generic.base import TemplateView
 from django.contrib.auth.decorators import login_required
 import json
+import random
 
 
 class JSONResponseMixin(object):
@@ -190,6 +191,7 @@ class AjaxCreateGroups(JSONResponseMixin, TemplateView):
                 # Find the person with the lowest total matching count
                 person_to_use = None
                 lowest_count = None
+                random.shuffle(ordered_people)
                 for person in ordered_people:
                     count = 0
                     for people in group.people:
