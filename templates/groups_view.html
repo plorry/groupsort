@@ -1,77 +1,169 @@
-<link href='http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,700,300italic' rel='stylesheet' type='text/css'>
-
 <style type='text/css'>
         div.vert_column{
                 border:3px solid silver;
                 border-radius:15px;
-                width:160px;
+                width:15%;
                 text-align:center;
         float:left;
-        margin:2%;
+        margin:1%;
         font-family: 'Open Sans Condensed', sans-serif;
         padding:10px;
+        min-width:150px;
         }
-    div.content{
-        border:3px solid silver;
-                border-radius:15px;
-                width:95%;
-                text-align:center;
-        margin:0 auto;
-        font-family: 'Open Sans Condensed', sans-serif;
-        padding:10px;
-        overflow:auto;
-    }
+
+        div.double_wide{
+            width: 30%;
+        }
     a{
         text-decoration:none;
         color:gray;
     }
-    div.action_button{
-        width:160px;
+
+    .group{
+        border: 2px solid black;
+        border-radius: 10px;
+        overflow: auto;
+        clear: both;
+    }
+
+    .selected{
+        background: gainsboro;
+    }
+
+    .small_action_button{
+        width:40px;
+        margin:0px auto;
+        border-radius:5px;
+        background: #0099CB;
+        color:white;
+        float: right;
+    }
+
+    .action_button{
+        width:120px;
+        position: relative;
         margin:10px auto;
         border-radius:5px;
         background: #0099CB;
         color:white;
-        overflow:auto;
-        clear:both;
+        clear: both;
+        display: block;
     }
-    div.action_button:hover{
+    .action_button:hover, .small_action_button:hover{
         background:#4CAFD0;
+    }
+    span.action_button{
+        padding:0 5px;
     }
     ul{
         list-style-type:none;
         margin:0;padding:0;
+        display: block;
     }
     ul li{
-        margin:0;padding:0;
+        margin:4px 0;padding:0;
+        display: block;
+        float:left;
+        width: 100%;
     }
 </style>
-<div class='content'>
-<h3>Groups</h3>
-    {% for group in groups %}
-        <div class='vert_column'>
-            <ul>
-            {% for person in group %}
-                <li>
-                {{ person.name }}
+
+<html>
+    <div class="vert_column">
+        <h3>Saved Groups for {{ namelist }}</h3>
+        <ul id="saved-group-titles">
+            {% for groupset in groupsets %}
+                <li data-groupset-id={{ groupset.id }}>
+                {% if groupset.title %}
+                    {{ groupset.title }}
+                {% else %}
+                    Group {{ groupset.id }}
+                {% endif %}
                 </li>
             {% endfor %}
-            </ul>
-        </div>
-    {% endfor %}
-    <br />
-    <a href=''>
-        <div class='action_button'>
-            <b>Use These Groups (Save)</b>
-        </div>
-    </a>
-    <a href=''>
-        <div class='action_button'>
-            <b>Don't Use - Sort Again</b>
-        </div>
-    </a>
-        <a href='{% url home %}'>
-        <div class='action_button'>
-            <b>Back Home</b>
-        </div>
-    </a>
-</div>
+        </ul>
+    </div>
+
+    <div class="vert_column double_wide" id='group-column'>
+        <h3></h3>
+        <ul id="group-list">
+
+        </ul>
+    </div>
+
+</html>
+
+<script type='text/javascript'>
+    var GROUPSETS = {
+            {% for groupset in groupsets %}
+                '{{ groupset.id }}': {
+                    'title': '{{ groupset.title }}',
+                    'groups': [
+                        {% for group in groupset.groups.all %}
+                            {
+                                'people': [
+                                    {% for person in group.people.all %}
+                                        {
+                                            'name': '{{ person.name }}'
+                                        },
+                                    {% endfor %}
+                                ]
+                            },
+                        {% endfor %}
+                    ]
+                },
+            {% endfor %}
+    };
+
+    var GROUPSETLIST = {
+            ATTRIBUTES: {
+                'selectedGroupset': null
+            },
+            ACTIONS: {
+                set_all: function() {
+                    var elements = GROUPSETLIST.ACTIONS.gather_all();
+                    elements.forEach(function(e) {
+                        e.addEventListener("click", GROUPSETLIST.ACTIONS.select);
+                    });
+                },
+                select: function(element) {
+                    var elements = GROUPSETLIST.ACTIONS.gather_all();
+                    elements.forEach(function(e) {
+                        e.setAttribute("class", "");
+                    });
+                    element.target.setAttribute("class", "selected");
+                    var id = element.target.getAttribute("data-groupset-id");
+                    GROUPSETLIST.ATTRIBUTES.selectedGroupset = id;
+                    GROUPSETLIST.ACTIONS.populate_groups();
+                },
+                gather_all: function() {
+                    var elements = document.querySelectorAll('#saved-group-titles li');
+                    return elements;
+                },
+                populate_groups: function() {
+                    var id = GROUPSETLIST.ATTRIBUTES.selectedGroupset;
+                    console.log(id);
+                    var groupsetData = GROUPSETS[id];
+
+                    console.log(groupsetData);
+
+                    var text = '';
+                    groupsetData.groups.forEach(function(group) {
+                        var groupText = "<div class='group'><ul>";
+                        group.people.forEach(function(person){
+                            groupText += "<li>" + person.name + "</li>";
+                        });
+                        groupText += "</ul></div>";
+                        text += groupText;
+                    });
+                    GROUPSETLIST.ELEMENTS.groupsList.innerHTML = text;
+                }
+            },
+            ELEMENTS: {
+                groupsList: document.getElementById('group-list')
+            }
+    };
+
+    GROUPSETLIST.ACTIONS.set_all();
+
+</script>

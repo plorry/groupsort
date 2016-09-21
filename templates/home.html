@@ -2,13 +2,16 @@
         div.vert_column{
                 border:3px solid silver;
                 border-radius:15px;
-                width:20%;
+                width:15%;
                 text-align:center;
         float:left;
-        margin:2%;
+        margin:1%;
         font-family: 'Open Sans Condensed', sans-serif;
         padding:10px;
         min-width:150px;
+        }
+        div.double_wide{
+            width: 30%;
         }
     a{
         text-decoration:none;
@@ -60,7 +63,10 @@
         margin:4px 0;padding:0;
         display: block;
         float:left;
-        width: 100%;
+        width: 150px;
+    }
+    ul li.full-width{
+        width: 300px;
     }
 </style>
 <div class='vert_column'>
@@ -74,9 +80,12 @@
     </ul>
     <input type='text' id='new_namelist_title', name='new_namelist_title' />
     <div class='action_button' id='new_namelist'>+</div>
+    <br />
+    <a id='groups-url' href='/saved_groups/'>See Saved Groups</a>
 
 </div>
-<div class='vert_column'>
+
+<div class='vert_column double_wide'>
     <h3>Members</h3>
     <ul id='names'>
 
@@ -87,7 +96,7 @@
     {% endfor %}
 
     </ul>
-    <input type='text' id='new_person_name', name='new_person_name' />
+    <input style="float:left; clear: both;" type='text' id='new_person_name', name='new_person_name' />
     <div class='action_button' id='new_person'>+</div>
     <!--
         <li>
@@ -106,7 +115,7 @@
     </ul>
 </div>
 
-<div class='vert_column' id='group-info' style='display:none'>
+<div class='vert_column double_wide' id='group-info' style='display:none'>
     <h3>Groups Setup</h3>
     <h4>Number of Groups: <span id=group-count></span></h4>
     <div class='small_action_button' id='add-group'>+</div>
@@ -114,6 +123,7 @@
     <ul id='groups-setup'>
     </ul>
     <br />
+    <input type='text' style="display:hidden;" id='save-groups-name' />
     <div class='action_button' id='save-groups' style="display:hidden;"><strong>Save These Groups</strong></div>
     <div class='action_button' id='create-groups'><strong>Sort!</strong></div>
 </div>
@@ -205,6 +215,7 @@
     var addGroupsButton = document.getElementById('add-group');
     var subGroupsButton = document.getElementById('sub-group');
     var createGroupsButton = document.getElementById('create-groups');
+    var saveGroupsButton = document.getElementById('save-groups');
 
     addNamelistButton.addEventListener("click", function(){
         NAMELISTS.ACTIONS.create_new();
@@ -227,6 +238,10 @@
         GROUPS.ACTIONS.createGroups();
     });
 
+    saveGroupsButton.addEventListener('click', function () {
+        SAVEDGROUPS.ACTIONS.saveGroups();
+    });
+
     var NAMELISTS = {
         ATTRIBUTES: {
             'selectedNamelist': null
@@ -243,7 +258,7 @@
                     'title': NAMELISTS.ACTIONS.get_namelist_title(),
                     'csrfmiddlewaretoken':'{{csrf_token}}'
                 };
-                ajax.post('/groupsort/add_namelist/', data, NAMELISTS.ACTIONS.retrieve, true);
+                ajax.post('/add_namelist/', data, NAMELISTS.ACTIONS.retrieve, true);
                 NAMELISTS.ELEMENTS.new_title.value = '';
             },
 
@@ -253,7 +268,7 @@
             },
 
             retrieve: function() {
-                ajax.get('/groupsort/get_namelists/', {}, NAMELISTS.ACTIONS.update_list, true);
+                ajax.get('/get_namelists/', {}, NAMELISTS.ACTIONS.update_list, true);
             },
 
             update_list: function(response) {
@@ -275,16 +290,23 @@
                 var id = element.target.getAttribute("data-namelist-id");
                 NAMELISTS.ATTRIBUTES.selectedNamelist = id;
                 MEMBERS.ACTIONS.retrieve();
+                NAMELISTS.ACTIONS.update_url();
             },
             gather_all: function() {
                 var elements = document.querySelectorAll('#namelists li');
                 return elements;
+            },
+            update_url: function() {
+                var url = NAMELISTS.ELEMENTS.groups_url;
+
+                url.setAttribute('href', '/saved_groups/?namelist_id=' + NAMELISTS.ATTRIBUTES.selectedNamelist);
             }
         },
 
         ELEMENTS: {
             new_title: document.getElementById('new_namelist_title'),
-            list: document.getElementById('namelists')
+            list: document.getElementById('namelists'),
+            groups_url: document.getElementById('groups-url')
         },
 
         TEMPLATES: {
@@ -309,7 +331,7 @@
                     var data = {
                         'namelist': NAMELISTS.ATTRIBUTES.selectedNamelist
                     };
-                    ajax.get('/groupsort/get_namelist/', data, MEMBERS.ACTIONS.update_list, true);
+                    ajax.get('/get_namelist/', data, MEMBERS.ACTIONS.update_list, true);
                 },
                 update_list: function(response) {
                     response = JSON.parse(response)
@@ -327,7 +349,7 @@
                         'namelist_id': NAMELISTS.ATTRIBUTES.selectedNamelist,
                         'csrfmiddlewaretoken':'{{csrf_token}}'
                     };
-                    ajax.post('/groupsort/add_person/', data, MEMBERS.ACTIONS.retrieve, true);
+                    ajax.post('/add_person/', data, MEMBERS.ACTIONS.retrieve, true);
                     MEMBERS.ELEMENTS.new_name.value = '';
                 },
                 get_person_name: function() {
@@ -473,10 +495,11 @@
                     'namelist_id': namelist_id,
                     'groups': groups
                 };
-                ajax.get('/groupsort/create_groups/', data, GROUPS.ACTIONS.displayGroups, true);
+                ajax.get('/create_groups/', data, GROUPS.ACTIONS.displayGroups, true);
             },
             displayGroups: function(response) {
                 var data = JSON.parse(response);
+                SAVEDGROUPS.ATTRIBUTES.saveData = data;
                 var groups = data.groups;
                 var newElement = ''
                 groups.forEach(function(group) {
@@ -493,7 +516,7 @@
         },
         TEMPLATES: {
             group: function(id, size) {
-                return "<li data-group-num=" + id + " data-group-size=" + size + "><span class='count'></span>"
+                return "<li class='full-width' data-group-num=" + id + " data-group-size=" + size + "><span class='count'></span>"
                     + "<div class='small_action_button' data-group-add=" + id + ">+</div>"
                     + "<div class='small_action_button' data-group-sub=" + id + ">-</div></li>";
             },
@@ -509,11 +532,24 @@
     };
 
     SAVEDGROUPS = {
+        ATTRIBUTES: {
+            saveData: null
+        },
         ACTIONS: {
-
+            saveGroups: function() {
+                data = SAVEDGROUPS.ATTRIBUTES.saveData;
+                data['csrfmiddlewaretoken'] = '{{csrf_token}}';
+                data['namelist_id'] = NAMELISTS.ATTRIBUTES.selectedNamelist;
+                data['group_title'] = SAVEDGROUPS.ELEMENTS.savedTitle.value;
+                data['groups'] = JSON.stringify({'groups': data['groups']});
+                ajax.post('/save_groups/', data, function(e){
+                    console.log('');
+                }, true);
+            }
         },
         ELEMENTS: {
-            list: document.getElementById('saved-groups-list')
+            list: document.getElementById('saved-groups-list'),
+            savedTitle: document.getElementById('save-groups-name')
         }
     };
 
