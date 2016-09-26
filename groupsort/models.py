@@ -47,7 +47,13 @@ class Groups(models.Model):
         for person1 in self.people.all():
             for person2 in self.people.all():
                 if person1 != person2:
-                    pairing = Pairing.objects.filter(people__in=[person1]).filter(people__in=[person2]).get()
+                    print(person1, person2)
+                    try:
+                        pairing = Pairing.objects.filter(people__in=[person1]).filter(people__in=[person2]).get()
+                    except:
+                        pairing = Pairing.objects.create(namelist=self.groupset.namelist)
+                        pairing.people.add(person1)
+                        pairing.people.add(person2)
                     if pairing not in pairings:
                         pairings.append(pairing)
 
@@ -61,9 +67,20 @@ class Groups(models.Model):
             response.get('people').append(person.serialize())
         return response
 
+    def increment_pairings(self):
+        for pairing in self.get_pairings():
+            pairing.count += 1
+            pairing.save()
+
+    def decrement_pairings(self):
+        for pairing in self.get_pairings():
+            pairing.count -= 1
+            pairing.save()
+
 class GroupSet(models.Model):
     namelist = models.ForeignKey(NameList, related_name='groupsets')
     title = models.CharField(max_length=20)
+    deleted = models.BooleanField(default=False)
 
     def serialize(self):
         response = {
@@ -73,3 +90,11 @@ class GroupSet(models.Model):
         for group in self.groups.all():
             response.get('groups').append(group.serialize())
         return response
+
+    def delete(self):
+        if self.deleted:
+            return
+        self.deleted = True
+        for group in self.groups.all():
+            group.decrement_pairings()
+        self.save()
