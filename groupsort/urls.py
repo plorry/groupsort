@@ -17,7 +17,8 @@ from django.conf.urls import url, include
 from django.contrib import admin
 
 from groupsort.views import (GroupSortView, AjaxAddNamelistView, AjaxSaveGroups, GroupsView,
-    AjaxGetNamelist, AjaxGetNamelists, AjaxAddPersonView, AjaxCreateGroups, DeleteView)
+    AjaxGetNamelist, AjaxGetNamelists, AjaxAddPersonView, AjaxCreateGroups, DeleteView,
+    AjaxSaveRepeats)
 
 urlpatterns = [
     url(r'^$', GroupSortView.as_view(), name="home"),
@@ -30,4 +31,5 @@ urlpatterns = [
     url(r'^save_groups/$', AjaxSaveGroups.as_view(), name="save_groups"),
     url(r'^saved_groups/$', GroupsView.as_view(), name='saved_groups'),
     url(r'^delete_group/$', DeleteView.as_view(), name='delete_group'),
+    url(r'^save_count/$', AjaxSaveRepeats.as_view(), name='save_repeats'),
 ]

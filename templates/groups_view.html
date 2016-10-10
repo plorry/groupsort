@@ -169,6 +169,7 @@ ajax.post = function (url, data, callback, async) {
             {% for groupset in groupsets %}
                 '{{ groupset.id }}': {
                     'title': '{{ groupset.title }}',
+                    'repeats': {{ groupset.repeats }},
                     'groups': [
                         {% for group in groupset.groups.all %}
                             {
@@ -188,7 +189,8 @@ ajax.post = function (url, data, callback, async) {
 
     var GROUPSETLIST = {
             ATTRIBUTES: {
-                'selectedGroupset': null
+                'selectedGroupset': null,
+                'groupCount': null
             },
             ACTIONS: {
                 set_all: function() {
@@ -207,7 +209,18 @@ ajax.post = function (url, data, callback, async) {
                     element.target.setAttribute("class", "selected");
                     var id = element.target.getAttribute("data-groupset-id");
                     GROUPSETLIST.ATTRIBUTES.selectedGroupset = id;
+                    GROUPSETLIST.ATTRIBUTES.groupCount = GROUPSETS[id].repeats;
                     GROUPSETLIST.ACTIONS.populate_groups();
+                    GROUPSETLIST.ACTIONS.setupRepeatTemplate();
+                    GROUPSETLIST.ACTIONS.setCount(GROUPSETLIST.ATTRIBUTES.groupCount);
+                },
+                add_count: function() {
+                  GROUPSETLIST.ATTRIBUTES.groupCount++;
+                  GROUPSETLIST.ACTIONS.setCount(GROUPSETLIST.ATTRIBUTES.groupCount);
+                },
+                sub_count: function() {
+                  GROUPSETLIST.ATTRIBUTES.groupCount--;
+                  GROUPSETLIST.ACTIONS.setCount(GROUPSETLIST.ATTRIBUTES.groupCount);
                 },
                 gather_all: function() {
                     var elements = document.querySelectorAll('#saved-group-titles li');
@@ -246,12 +259,49 @@ ajax.post = function (url, data, callback, async) {
                     } else {
                         groupsList.innerHTML = "Sorry, there was an error. Refresh and try again?";
                     }
+                },
+                setCount: function(count) {
+                  var repeatCounter = document.getElementById('repeat-count-int');
+                  repeatCounter.innerHTML = count;
+                },
+                setupRepeatTemplate: function() {
+                  var repeatButtons = GROUPSETLIST.ELEMENTS.repeatButtons;
+                  repeatButtons.innerHTML = GROUPSETLIST.TEMPLATES.repeatCounter + GROUPSETLIST.TEMPLATES.repeatButtons + GROUPSETLIST.TEMPLATES.repeatSave;
+                  var addButton = document.getElementById('count-higher');
+                  var subButton = document.getElementById('count-lower');
+                  subButton.addEventListener("click", GROUPSETLIST.ACTIONS.sub_count);
+                  addButton.addEventListener("click", GROUPSETLIST.ACTIONS.add_count);
+                  var saveButton = document.getElementById('saveCount');
+                  saveButton.addEventListener("click", GROUPSETLIST.ACTIONS.saveGroupset);
+                },
+                saveGroupset: function() {
+                  var data = {
+                    'groupset_id': GROUPSETLIST.ATTRIBUTES.selectedGroupset,
+                    'count': GROUPSETLIST.ATTRIBUTES.groupCount,
+                    'csrfmiddlewaretoken':'{{csrf_token}}'
+                  };
+                  ajax.post('/save_count/', data, GROUPSETLIST.ACTIONS.saveMessage, true);
+                },
+                saveMessage: function(response) {
+                  var response = JSON.parse(response);
+                  var groupsList = GROUPSETLIST.ELEMENTS.groupsList;
+                  if (response.status == "success") {
+                      groupsList.innerHTML = "Successfully saved. Please refresh page.";
+                  } else {
+                      groupsList.innerHTML = "Sorry, there was an error. Refresh and try again?";
+                  }
                 }
             },
             ELEMENTS: {
                 groupsList: document.getElementById('group-list'),
                 groupName: document.getElementById('group-name'),
-                deleteButton: document.getElementById('delete-button')
+                deleteButton: document.getElementById('delete-button'),
+                repeatButtons: document.getElementById('repeat-count')
+            },
+            TEMPLATES: {
+              repeatCounter: "Repeat Count: <div id='repeat-count-int'></div>",
+              repeatButtons: "<div class='small_action_button' id='count-lower'>-</div><div class='small_action_button' id='count-higher'>+</div>",
+              repeatSave: "<div class='action_button' id='saveCount'>Save</div>"
             }
     };
 

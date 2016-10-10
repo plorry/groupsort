@@ -96,7 +96,8 @@ class GroupSet(models.Model):
     def serialize(self):
         response = {
             'title': self.title,
-            'groups': []
+            'groups': [],
+            'repeats': self.repeats
         }
         for group in self.groups.all():
             response.get('groups').append(group.serialize())

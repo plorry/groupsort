@@ -294,10 +294,9 @@ class AjaxSaveRepeats(JSONResponseMixin, TemplateView):
 
     def post(self, request, *args, **kwargs):
         data = request.POST
-        groupsets = data.get('groupsets')
-        for groupset in groupsets:
-            group = GroupSet.objects.get(id=groupset.get('id'))
-            groups.set_count(groupset.get('count'))
+        groupset_id = data.get('groupset_id')
+        groupset = GroupSet.objects.get(id=groupset_id)
+        groupset.set_repeats(data.get('count'))
 
         return self.render_to_response({
             'status': 'success',
