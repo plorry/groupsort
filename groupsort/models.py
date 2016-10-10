@@ -38,6 +38,14 @@ class Pairing(models.Model):
     def __unicode__(self):
         return ', '.join([person.name for person in self.people.all()])
 
+    def set_count(self):
+        count = 0
+        groups = Groups.objects.filter(groupset__deleted=False, groupset__namelist=self.namelist, people__in=[self.people.first()]).filter(people__in=[self.people.last()])
+        for group in groups:
+            count += group.groupset.repeats
+        self.count = count
+        self.save()
+
 class Groups(models.Model):
     groupset = models.ForeignKey('GroupSet', related_name='groups')
     people = models.ManyToManyField(Person, blank=True, null=True)
@@ -61,26 +69,29 @@ class Groups(models.Model):
 
     def serialize(self):
         response = {
-            'people': []
+            'people': [],
         }
         for person in self.people.all():
             response.get('people').append(person.serialize())
+        overlap_value = 0
+        for pairing in self.get_pairings():
+            overlap_value += pairing.count
+        response.update({'overlap_value': overlap_value})
         return response
 
     def increment_pairings(self):
         for pairing in self.get_pairings():
-            pairing.count += 1
-            pairing.save()
+            pairing.set_count()
 
     def decrement_pairings(self):
         for pairing in self.get_pairings():
-            pairing.count -= 1
-            pairing.save()
+            pairing.set_count()
 
 class GroupSet(models.Model):
     namelist = models.ForeignKey(NameList, related_name='groupsets')
     title = models.CharField(max_length=20)
     deleted = models.BooleanField(default=False)
+    repeats = models.IntegerField(default=1)
 
     def serialize(self):
         response = {
@@ -98,3 +109,9 @@ class GroupSet(models.Model):
         for group in self.groups.all():
             group.decrement_pairings()
         self.save()
+
+    def set_repeats(self, repeats):
+        self.repeats = repeats
+        self.save()
+        for group in self.groups.all():
+            group.increment_pairings()

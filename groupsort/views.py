@@ -287,3 +287,18 @@ class DeleteView(JSONResponseMixin, TemplateView):
         return self.render_to_response({
             'status': 'success',
         })
+
+class AjaxSaveRepeats(JSONResponseMixin, TemplateView):
+    def render_to_response(self, context, **response_kwargs):
+        return self.render_to_json_response(context, **response_kwargs)
+
+    def post(self, request, *args, **kwargs):
+        data = request.POST
+        groupsets = data.get('groupsets')
+        for groupset in groupsets:
+            group = GroupSet.objects.get(id=groupset.get('id'))
+            groups.set_count(groupset.get('count'))
+
+        return self.render_to_response({
+            'status': 'success',
+        })
