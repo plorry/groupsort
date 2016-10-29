@@ -144,6 +144,33 @@ class Group(object):
         return [{'id': person.id, 'name': person.name} for person in self.people]
 
 
+class AjaxGetPairings(JSONResponseMixin, TemplateView):
+    def render_to_response(self, context, **response_kwargs):
+        return self.render_to_json_response(context, **response_kwargs)
+
+    def generate_pairs(self, namelist):
+        people = namelist.people.all()
+
+        for person1 in people:
+            for person2 in people:
+                if person1 != person2:
+                    pairing = Pairing.objects.filter(people__in=[person1.id]).filter(people__in=[person2.id])
+                    if pairing.count() == 0:
+                        pairing = Pairing.objects.create(namelist=namelist)
+                        pairing.people.add(person1)
+                        pairing.people.add(person2)
+
+    def get(self, request, *args, **kwargs):
+        namelist = NameList.objects.get(id=request.GET.get('namelist_id'))
+
+        self.generate_pairs(namelist)
+
+        pairings = namelist.pairings.all().order_by('count')
+
+        return self.render_to_response(
+            {'pairings': [pairing.serialize() for pairing in pairings]}
+        )
+
 class AjaxCreateGroups(JSONResponseMixin, TemplateView):
     def render_to_response(self, context, **response_kwargs):
         return self.render_to_json_response(context, **response_kwargs)

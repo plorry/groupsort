@@ -46,6 +46,12 @@ class Pairing(models.Model):
         self.count = count
         self.save()
 
+    def serialize(self):
+        return {
+            'people': [person.id for person in self.people.all()],
+            'count': self.count,
+        }
+
 class Groups(models.Model):
     groupset = models.ForeignKey('GroupSet', related_name='groups')
     people = models.ManyToManyField(Person, blank=True, null=True)
