@@ -318,7 +318,8 @@
 
     var MEMBERS = {
             ATTRIBUTES: {
-                'selectedPerson': null
+                'selectedPerson': null,
+                'allMembers': []
             },
             ACTIONS: {
                 set_all: function() {
@@ -333,9 +334,14 @@
                     };
                     ajax.get('/get_namelist/', data, MEMBERS.ACTIONS.update_list, true);
                 },
+                getMemberById: function(id) {
+                  var member = MEMBERS.ATTRIBUTES.allMembers.filter(person => person.id == id);
+                  return member[0];
+                },
                 update_list: function(response) {
                     response = JSON.parse(response)
                     names = response.members;
+                    MEMBERS.ATTRIBUTES.allMembers = names;
                     var new_list = '';
                     names.forEach(function(name){
                         new_list += (MEMBERS.TEMPLATES.name(name));
@@ -482,9 +488,21 @@
                 var groups = document.querySelectorAll("[data-group-num]");
                 return groups;
             },
-            sortGroups: function(pairings, groups_data) {
+            sortGroups: function(response) {
                     var ordered_people = [];
                     var groups = [];
+                    var groups_data = [];
+
+                    var groupItems = GROUPS.ACTIONS.gatherAll();
+
+                    groupItems.forEach(function(element) {
+                        groups_data.push(element.getAttribute("data-group-size"));
+                    });
+
+                    response = JSON.parse(response);
+                    var pairings = response['pairings'];
+
+                    console.log(pairings);
 
                     pairings.forEach(function(pairing) {
                         pairing.people.forEach(function(person) {
@@ -498,7 +516,7 @@
                     groups_data.forEach(function(group){
                         groups.push({
                             'people': [ordered_people.pop()],
-                            'size': group.size
+                            'size': group
                         });
                     });
 
@@ -531,7 +549,16 @@
                         });
                     }
 
-                    return groups;
+                    var return_groups = []
+                    groups.forEach(function(group) {
+                      var new_group = [];
+                      group.people.forEach(function(person) {
+                        new_group.push(MEMBERS.ACTIONS.getMemberById(person));
+                      });
+                      return_groups.push(new_group);
+                    });
+                    console.log(return_groups);
+                    GROUPS.ACTIONS.displayGroups({'groups': return_groups});
             },
             createGroups: function() {
                 var namelist_id = NAMELISTS.ATTRIBUTES.selectedNamelist;
@@ -551,7 +578,12 @@
                 //ajax.get('/create_groups/', data, GROUPS.ACTIONS.displayGroups, true);
             },
             displayGroups: function(response) {
-                var data = JSON.parse(response);
+                var data;
+                if (typeof(response) == String) {
+                  data = JSON.parse(response);
+                } else {
+                  data = response;
+                }
                 SAVEDGROUPS.ATTRIBUTES.saveData = data;
                 var groups = data.groups;
                 var newElement = ''
@@ -560,6 +592,25 @@
                 });
                 var setupList = GROUPS.ELEMENTS.setupList;
                 setupList.innerHTML = newElement;
+            },
+            dragMember: function(ev) {
+              ev.dataTransfer.setData("text", ev.target.id);
+            },
+            dropMember: function(ev) {
+              ev.preventDefault();
+              var data = ev.dataTransfer.getData("text");
+              var target;
+              if (ev.target.tagName == "DIV") {
+                target = ev.target;
+              } else {
+                target = ev.target.parentNode;
+              }
+              target.appendChild(document.getElementById(data));
+            },
+            setGroups: function() {
+              // Set the header for each group
+              
+              // Set the save data for the page
             }
         },
         ELEMENTS: {
@@ -574,15 +625,19 @@
                     + "<div class='small_action_button' data-group-sub=" + id + ">-</div></li>";
             },
             displayGroup: function(group) {
-                var text = "<div class='group'><ul>";
+                var text = "<div class='group' ondragover='allowDrop(event)' ondrop='GROUPS.ACTIONS.dropMember(event)'><ul>";
                 group.forEach(function(person) {
-                    text += "<li>" + person.name + "</li>";
+                    text += "<li draggable=true id=drag-"+person.id+" ondragstart='GROUPS.ACTIONS.dragMember(event)'>" + person.name + "</li>";
                 });
                 text += "</ul></div>"
                 return text;
             }
         }
     };
+
+    var allowDrop = function(event) {
+      event.preventDefault();
+    }
 
     SAVEDGROUPS = {
         ATTRIBUTES: {
