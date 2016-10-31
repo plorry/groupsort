@@ -23,6 +23,8 @@
         border-radius: 10px;
         overflow: auto;
         clear: both;
+        margin: 2px 0;
+        min-height: 1em;
     }
 
     .selected{
@@ -67,6 +69,12 @@
     }
     ul li.full-width{
         width: 300px;
+    }
+    ul li.draggable-name{
+        margin:2px 4px;
+        padding:2px 0;
+        background-color: lightblue;
+        border-radius: 4px;
     }
 </style>
 <div class='vert_column'>
@@ -592,6 +600,7 @@
                 });
                 var setupList = GROUPS.ELEMENTS.setupList;
                 setupList.innerHTML = newElement;
+                GROUPS.ACTIONS.setGroups();
             },
             dragMember: function(ev) {
               ev.dataTransfer.setData("text", ev.target.id);
@@ -606,11 +615,22 @@
                 target = ev.target.parentNode;
               }
               target.appendChild(document.getElementById(data));
+              GROUPS.ACTIONS.setGroups();
+            },
+            getGroups: function() {
+                var groups = document.getElementsByClassName('group');
+                return groups;
             },
             setGroups: function() {
               // Set the header for each group
-              
+              var groups = [].slice.call(GROUPS.ACTIONS.getGroups());
+              var groupMembers = [];
+              groups.forEach(function(group) {
+                  var memberItems = group.getElementsByTagName("li");
+                  var header = GROUPS.TEMPLATES.groupHeader();
+              });
               // Set the save data for the page
+
             }
         },
         ELEMENTS: {
@@ -627,9 +647,14 @@
             displayGroup: function(group) {
                 var text = "<div class='group' ondragover='allowDrop(event)' ondrop='GROUPS.ACTIONS.dropMember(event)'><ul>";
                 group.forEach(function(person) {
-                    text += "<li draggable=true id=drag-"+person.id+" ondragstart='GROUPS.ACTIONS.dragMember(event)'>" + person.name + "</li>";
+                    text += "<li class='draggable-name' draggable=true id=drag-"+person.id+" ondragstart='GROUPS.ACTIONS.dragMember(event)' data-person-id="+person.id+">"
+                        + person.name + "</li>";
                 });
                 text += "</ul></div>"
+                return text;
+            },
+            groupHeader: function(size) {
+                var text = "<div class='header'>Group of "+ size +"</div>";
                 return text;
             }
         }
@@ -651,7 +676,7 @@
                 data['group_title'] = SAVEDGROUPS.ELEMENTS.savedTitle.value;
                 data['groups'] = JSON.stringify({'groups': data['groups']});
                 ajax.post('/save_groups/', data, function(e){
-                    console.log('');
+                    window.alert('Groups Saved! View them by clicking "See Saved Groups"')
                 }, true);
             }
         },
