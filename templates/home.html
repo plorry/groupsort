@@ -23,6 +23,8 @@
         border-radius: 10px;
         overflow: auto;
         clear: both;
+        margin: 2px 0;
+        min-height: 1em;
     }
 
     .selected{
@@ -67,6 +69,12 @@
     }
     ul li.full-width{
         width: 300px;
+    }
+    ul li.draggable-name{
+        margin:2px 4px;
+        padding:2px 0;
+        background-color: lightblue;
+        border-radius: 4px;
     }
 </style>
 <div class='vert_column'>
@@ -318,7 +326,8 @@
 
     var MEMBERS = {
             ATTRIBUTES: {
-                'selectedPerson': null
+                'selectedPerson': null,
+                'allMembers': []
             },
             ACTIONS: {
                 set_all: function() {
@@ -333,9 +342,14 @@
                     };
                     ajax.get('/get_namelist/', data, MEMBERS.ACTIONS.update_list, true);
                 },
+                getMemberById: function(id) {
+                  var member = MEMBERS.ATTRIBUTES.allMembers.filter(person => person.id == id);
+                  return member[0];
+                },
                 update_list: function(response) {
                     response = JSON.parse(response)
                     names = response.members;
+                    MEMBERS.ATTRIBUTES.allMembers = names;
                     var new_list = '';
                     names.forEach(function(name){
                         new_list += (MEMBERS.TEMPLATES.name(name));
@@ -482,6 +496,81 @@
                 var groups = document.querySelectorAll("[data-group-num]");
                 return groups;
             },
+            sortGroups: function(response) {
+                    var ordered_people = [];
+                    var groups = [];
+                    var groups_data = [];
+
+                    var groupItems = GROUPS.ACTIONS.gatherAll();
+
+                    groupItems.forEach(function(element) {
+                        groups_data.push(element.getAttribute("data-group-size"));
+                    });
+
+                    response = JSON.parse(response);
+                    var pairings = response['pairings'];
+
+                    pairings.forEach(function(pairing) {
+                        pairing.people.forEach(function(person) {
+                            if (!ordered_people.includes(person)) {
+                                ordered_people.push(person);
+                            }
+                        });
+                    });
+
+                    // Create groups, each with a "leader"
+                    groups_data.forEach(function(group){
+                        groups.push({
+                            'people': [ordered_people.pop()],
+                            'size': group
+                        });
+                    });
+
+                    console.log(ordered_people);
+
+                    while (ordered_people.length > 0) {
+                        if (groups.length == 0) {
+                            window.alert("To re-sort, adjust the settings, and push sort again");
+                            break;
+                        };
+                        groups.forEach(function(group) {
+                            if (group.people.length >= group.size) {
+                                // group is full
+                                return;
+                            }
+                            var person_to_use = null;
+                            var lowest_count = null;
+
+                            ordered_people.forEach(function(person) {
+                                var count = 0;
+
+                                group.people.forEach(function(person2){
+                                    pairing = pairings.filter(pairing => arraysEqual(pairing.people, [person, person2]));
+                                    count += pairing.count;
+                                });
+
+                                if (lowest_count == null || count < lowest_count) {
+                                    lowest_count = count;
+                                    person_to_use = person;
+                                }
+                            });
+
+                            var index = ordered_people.indexOf(person_to_use);
+                            ordered_people.splice(index, 1);
+                            group.people.push(person_to_use);
+                        });
+                    }
+
+                    var return_groups = []
+                    groups.forEach(function(group) {
+                      var new_group = [];
+                      group.people.forEach(function(person) {
+                        new_group.push(MEMBERS.ACTIONS.getMemberById(person));
+                      });
+                      return_groups.push(new_group);
+                    });
+                    GROUPS.ACTIONS.displayGroups({'groups': return_groups});
+            },
             createGroups: function() {
                 var namelist_id = NAMELISTS.ATTRIBUTES.selectedNamelist;
                 var groups = [];
@@ -495,10 +584,17 @@
                     'namelist_id': namelist_id,
                     'groups': groups
                 };
-                ajax.get('/create_groups/', data, GROUPS.ACTIONS.displayGroups, true);
+
+                ajax.get('/get_pairings', data, GROUPS.ACTIONS.sortGroups, true);
+                //ajax.get('/create_groups/', data, GROUPS.ACTIONS.displayGroups, true);
             },
             displayGroups: function(response) {
-                var data = JSON.parse(response);
+                var data;
+                if (typeof(response) == String) {
+                  data = JSON.parse(response);
+                } else {
+                  data = response;
+                }
                 SAVEDGROUPS.ATTRIBUTES.saveData = data;
                 var groups = data.groups;
                 var newElement = ''
@@ -507,6 +603,46 @@
                 });
                 var setupList = GROUPS.ELEMENTS.setupList;
                 setupList.innerHTML = newElement;
+                GROUPS.ACTIONS.setGroups();
+            },
+            dragMember: function(ev) {
+              ev.dataTransfer.setData("text", ev.target.id);
+            },
+            dropMember: function(ev) {
+              ev.preventDefault();
+              var data = ev.dataTransfer.getData("text");
+              var target;
+              if (ev.target.tagName == "DIV") {
+                target = ev.target;
+              } else {
+                target = ev.target.parentNode;
+              }
+              target.appendChild(document.getElementById(data));
+              GROUPS.ACTIONS.setGroups();
+            },
+            getGroups: function() {
+                var groups = document.getElementsByClassName('group');
+                return groups;
+            },
+            setGroups: function() {
+              // Set the header for each group
+              var groups = [].slice.call(GROUPS.ACTIONS.getGroups());
+              var groupMembers = [];
+              var id, name, member;
+              groups.forEach(function(group) {
+                  var newGroup = [];
+                  var memberItems = [].slice.call(group.getElementsByTagName("li"));
+                  memberItems.forEach(function(memberItem){
+                      id = memberItem.getAttribute("data-person-id");
+                      name = memberItem.getAttribute("data-person-name");
+                      member = {'name': name, 'id': id};
+                      newGroup.push(member);
+                  });
+                  groupMembers.push(newGroup);
+                  var header = GROUPS.TEMPLATES.groupHeader();
+              });
+              // Set the save data for the page
+              SAVEDGROUPS.ATTRIBUTES.saveData = {'groups': groupMembers};
             }
         },
         ELEMENTS: {
@@ -521,15 +657,26 @@
                     + "<div class='small_action_button' data-group-sub=" + id + ">-</div></li>";
             },
             displayGroup: function(group) {
-                var text = "<div class='group'><ul>";
+                var text = "<div class='group' ondragover='allowDrop(event)' ondrop='GROUPS.ACTIONS.dropMember(event)'><ul>";
                 group.forEach(function(person) {
-                    text += "<li>" + person.name + "</li>";
+                    text += "<li class='draggable-name' draggable=true id=drag-"+person.id
+                        +" ondragstart='GROUPS.ACTIONS.dragMember(event)' data-person-name='"+person.name
+                        +"' data-person-id="+person.id+">"
+                        + person.name + "</li>";
                 });
                 text += "</ul></div>"
+                return text;
+            },
+            groupHeader: function(size) {
+                var text = "<div class='header'>Group of "+ size +"</div>";
                 return text;
             }
         }
     };
+
+    var allowDrop = function(event) {
+      event.preventDefault();
+    }
 
     SAVEDGROUPS = {
         ATTRIBUTES: {
@@ -543,7 +690,7 @@
                 data['group_title'] = SAVEDGROUPS.ELEMENTS.savedTitle.value;
                 data['groups'] = JSON.stringify({'groups': data['groups']});
                 ajax.post('/save_groups/', data, function(e){
-                    console.log('');
+                    window.alert('Groups Saved! View them by clicking "See Saved Groups"')
                 }, true);
             }
         },
@@ -555,5 +702,22 @@
 
     NAMELISTS.ACTIONS.set_all();
     MEMBERS.ACTIONS.set_all();
+
+
+    function arraysEqual(a, b) {
+      if (a === b) return true;
+      if (a == null || b == null) return false;
+      if (a.length != b.length) return false;
+
+      // If you don't care about the order of the elements inside
+      // the array, you should sort both arrays here.
+      a.sort();
+      b.sort();
+
+      for (var i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+      }
+      return true;
+    }
 
 </script>
