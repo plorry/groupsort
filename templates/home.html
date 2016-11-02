@@ -510,8 +510,6 @@
                     response = JSON.parse(response);
                     var pairings = response['pairings'];
 
-                    console.log(pairings);
-
                     pairings.forEach(function(pairing) {
                         pairing.people.forEach(function(person) {
                             if (!ordered_people.includes(person)) {
@@ -565,7 +563,6 @@
                       });
                       return_groups.push(new_group);
                     });
-                    console.log(return_groups);
                     GROUPS.ACTIONS.displayGroups({'groups': return_groups});
             },
             createGroups: function() {
@@ -625,12 +622,21 @@
               // Set the header for each group
               var groups = [].slice.call(GROUPS.ACTIONS.getGroups());
               var groupMembers = [];
+              var id, name, member;
               groups.forEach(function(group) {
-                  var memberItems = group.getElementsByTagName("li");
+                  var newGroup = [];
+                  var memberItems = [].slice.call(group.getElementsByTagName("li"));
+                  memberItems.forEach(function(memberItem){
+                      id = memberItem.getAttribute("data-person-id");
+                      name = memberItem.getAttribute("data-person-name");
+                      member = {'name': name, 'id': id};
+                      newGroup.push(member);
+                  });
+                  groupMembers.push(newGroup);
                   var header = GROUPS.TEMPLATES.groupHeader();
               });
               // Set the save data for the page
-
+              SAVEDGROUPS.ATTRIBUTES.saveData = {'groups': groupMembers};
             }
         },
         ELEMENTS: {
@@ -647,7 +653,9 @@
             displayGroup: function(group) {
                 var text = "<div class='group' ondragover='allowDrop(event)' ondrop='GROUPS.ACTIONS.dropMember(event)'><ul>";
                 group.forEach(function(person) {
-                    text += "<li class='draggable-name' draggable=true id=drag-"+person.id+" ondragstart='GROUPS.ACTIONS.dragMember(event)' data-person-id="+person.id+">"
+                    text += "<li class='draggable-name' draggable=true id=drag-"+person.id
+                        +" ondragstart='GROUPS.ACTIONS.dragMember(event)' data-person-name='"+person.name
+                        +"' data-person-id="+person.id+">"
                         + person.name + "</li>";
                 });
                 text += "</ul></div>"
