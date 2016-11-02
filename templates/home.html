@@ -526,7 +526,13 @@
                         });
                     });
 
+                    console.log(ordered_people);
+
                     while (ordered_people.length > 0) {
+                        if (groups.length == 0) {
+                            window.alert("To re-sort, adjust the settings, and push sort again");
+                            break;
+                        };
                         groups.forEach(function(group) {
                             if (group.people.length >= group.size) {
                                 // group is full
