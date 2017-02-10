@@ -1,0 +1,17 @@
+{% load static %}
+{% load render_bundle from webpack_loader %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}</title>
+    <script type='text/javascript' src='{% static "js/main.js" %}'></script>
+    <link rel='stylesheet' type='text/css' href='{% static "css/style.css" %}' />
+</head>
+<body onload="main(); setToken('{{ csrf_token|escapejs }}')" >
+    {% block body %}
+    {% endblock %}
+    <div id="react-app"></div>
+    {% render_bundle 'main' %}
+</body>
+</html>

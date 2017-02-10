@@ -15,10 +15,13 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-
 from groupsort.views import (GroupSortView, AjaxAddNamelistView, AjaxSaveGroups, GroupsView,
     AjaxGetNamelist, AjaxGetNamelists, AjaxAddPersonView, AjaxCreateGroups, DeleteView,
     AjaxSaveRepeats, AjaxGetPairings)
+
+from groupsort.api.urls import api_patterns
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     url(r'^$', GroupSortView.as_view(), name="home"),
@@ -33,4 +36,5 @@ urlpatterns = [
     url(r'^delete_group/$', DeleteView.as_view(), name='delete_group'),
     url(r'^save_count/$', AjaxSaveRepeats.as_view(), name='save_repeats'),
     url(r'^get_pairings/$', AjaxGetPairings.as_view(), name='get_pairings'),
-]
+    url(r'^api/', include(api_patterns)),
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
