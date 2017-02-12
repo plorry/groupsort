@@ -2,6 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class NameList(models.Model):
+    '''
+    A NameList is a named collection of People. NameLists also contain history data
+    for Groups of People.
+    '''
     title = models.CharField(max_length=50)
     user = models.ForeignKey(User, blank=True, null=True)
     def __unicode__(self):
@@ -12,6 +16,11 @@ class NameList(models.Model):
         return person
 
 class Person(models.Model):
+    '''
+    A Person is a named entry in a NameList. A Person can have other People
+    in their forbidden_pairings value, which will prevent them from ever
+    being in the same group together.
+    '''
     name = models.CharField(max_length=50)
     namelist = models.ForeignKey(NameList, related_name='people')
     forbidden_pairings = models.ManyToManyField("self")
@@ -30,6 +39,11 @@ class Person(models.Model):
         }
 
 class Pairing(models.Model):
+    '''
+    A Pairing is a link between two People. It contains metainformation
+    about how many times the People have been in the same group, and when
+    the last such event occurred.
+    '''
     people = models.ManyToManyField(Person, related_name='pairings')
     count = models.IntegerField(default=0)
     last_pairing = models.DateTimeField(auto_now=True)
@@ -53,6 +67,10 @@ class Pairing(models.Model):
         }
 
 class Groups(models.Model):
+    '''
+    A Group is a small collection of People within a NameList.
+    Every Group belongs to a complete GroupSet.
+    '''
     groupset = models.ForeignKey('GroupSet', related_name='groups')
     people = models.ManyToManyField(Person, blank=True, null=True)
 
@@ -94,6 +112,11 @@ class Groups(models.Model):
             pairing.set_count()
 
 class GroupSet(models.Model):
+    '''
+    A GroupSet is a named collection of Groups of People, which is
+    attached to a single NameList. A GroupSet's collection of Groups
+    will encapsulate the entire collection of People in a NameList.
+    '''
     namelist = models.ForeignKey(NameList, related_name='groupsets')
     title = models.CharField(max_length=20)
     deleted = models.BooleanField(default=False)
